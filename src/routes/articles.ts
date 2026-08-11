@@ -3,6 +3,7 @@ import { pool } from "../database";
 import { Article } from "../interfaces";
 import { ResultSetHeader } from "mysql2";
 import { validateRequiredArticleData } from "../middleware/article-validation";
+import { authenticateToken } from "../middleware/auth-validation";
 
 const router = Router();
 
@@ -26,27 +27,32 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", validateRequiredArticleData, async (req, res) => {
-  try {
-    const { title, body, category, submitted_by } = req.body;
-    const [result]: [ResultSetHeader, any] = await pool.execute(
-      "INSERT INTO articles (title, body, category, submitted_by) VALUES (?, ?, ?, ?)",
-      [title, body, category, submitted_by],
-    );
+router.post(
+  "/",
+  validateRequiredArticleData,
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { title, body, category, submitted_by } = req.body;
+      const [result]: [ResultSetHeader, any] = await pool.execute(
+        "INSERT INTO articles (title, body, category, submitted_by) VALUES (?, ?, ?, ?)",
+        [title, body, category, submitted_by],
+      );
 
-    const article: Article = {
-      id: result.insertId,
-      title,
-      body,
-      category,
-      submitted_by,
-      created_at: new Date().toISOString(),
-    };
-    res.status(201).json(article);
-  } catch (error) {
-    console.error("Database error", error);
-    res.status(500).json({ error: "Failed to to create article." });
-  }
-});
+      const article: Article = {
+        id: result.insertId,
+        title,
+        body,
+        category,
+        submitted_by,
+        created_at: new Date().toISOString(),
+      };
+      res.status(201).json(article);
+    } catch (error) {
+      console.error("Database error", error);
+      res.status(500).json({ error: "Failed to to create article." });
+    }
+  },
+);
 
 export default router;
